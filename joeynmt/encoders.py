@@ -219,7 +219,8 @@ class TransformerEncoder(Encoder):
 
         for layer in self.layers:
             x = layer(x, mask)
-        return self.layer_norm(x), None
+#        return self.layer_norm(x), None
+        return x, None   # MT Ex. 4 prenorm branch: remove pos-norm
 
     def __repr__(self):
         return f"{self.__class__.__name__}(num_layers={len(self.layers)}, " \

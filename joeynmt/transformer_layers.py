@@ -240,6 +240,7 @@ class TransformerDecoderLayer(nn.Module):
 
         self.x_layer_norm = nn.LayerNorm(size, eps=1e-6)
         self.dec_layer_norm = nn.LayerNorm(size, eps=1e-6)
+        self.enc_layer_norm = nn.LayerNorm(size, eps=1e-6)      # MT Ex. 4 prenorm branch: add pre-norm to encoder memory
 
         self.dropout = nn.Dropout(dropout)
 
@@ -265,7 +266,9 @@ class TransformerDecoderLayer(nn.Module):
 
         # source-target attention
         h1_norm = self.dec_layer_norm(h1)
-        h2 = self.src_trg_att(memory, memory, h1_norm, mask=src_mask)
+        memory_norm = self.enc_layer_norm(memory)         # MT Ex. 4 prenorm branch: add pre-norm to encoder memory
+        # h2 = self.src_trg_att(memory, memory, h1_norm, mask=src_mask)
+        h2 = self.src_trg_att(memory_norm, memory_norm, h1_norm, mask=src_mask)      # MT Ex. 4 prenorm branch: add pre-norm to encoder memory
 
         # final position-wise feed-forward layer
         o = self.feed_forward(self.dropout(h2) + h1)
