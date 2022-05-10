@@ -182,7 +182,7 @@ class TransformerEncoder(Encoder):
                                     num_heads=num_heads, dropout=dropout)
             for _ in range(num_layers)])
 
-        self.layer_norm = nn.LayerNorm(hidden_size, eps=1e-6)
+        # self.layer_norm = nn.LayerNorm(hidden_size, eps=1e-6)       # MT Ex. 4 pos-norm: removed layer normalization because it is part of Feed Forward sublayer (post-norm)
         self.pe = PositionalEncoding(hidden_size)
         self.emb_dropout = nn.Dropout(p=emb_dropout)
 
@@ -219,7 +219,8 @@ class TransformerEncoder(Encoder):
 
         for layer in self.layers:
             x = layer(x, mask)
-        return self.layer_norm(x), None
+        #return self.layer_norm(x), None
+        return x, None     # MT Ex. 4 pos-norm: removed layer normalization because it is part of Feed Forward sublayer (post-norm)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(num_layers={len(self.layers)}, " \

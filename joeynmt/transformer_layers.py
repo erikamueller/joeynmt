@@ -111,8 +111,10 @@ class PositionwiseFeedForward(nn.Module):
         )
 
     def forward(self, x):
-        x_norm = self.layer_norm(x)
-        return self.pwff_layer(x_norm) + x
+        # x_norm = self.layer_norm(x)
+        # return self.pwff_layer(x_norm) + x
+        x_ff = self.pwff_layer(x) + x    # MT Ex. 4 post-norm: move normalization step from pre- to post-norm: feed forward sublayer + residual connection
+        return self.layer_norm(x_ff)     # MT Ex. 4 post-norm: move normalization step from pre- to post-norm: post-normalization
 
 
 # pylint: disable=arguments-differ
@@ -198,10 +200,13 @@ class TransformerEncoderLayer(nn.Module):
         :param mask: input mask
         :return: output tensor
         """
-        x_norm = self.layer_norm(x)
-        h = self.src_src_att(x_norm, x_norm, x_norm, mask)
-        h = self.dropout(h) + x
-        o = self.feed_forward(h)
+        # x_norm = self.layer_norm(x)    # MT Ex. 4 post-norm: pre-norm step removed here
+        # h = self.src_src_att(x_norm, x_norm, x_norm, mask)
+        h = self.src_src_att(x, x, x, mask)    # MT Ex. 4 post-norm: move normalization step from pre- to post-norm: multi-head attention sublayer
+        h = self.dropout(h) + x     # dropout + residual connection
+        h_norm = self.layer_norm(h)       # MT Ex. 4 post-norm: move normalization step from pre- to post-norm
+        # o = self.feed_forward(h)
+        o = self.feed_forward(h_norm)      # MT Ex. 4 post-norm: pass on to feed forward after normalization
         return o
 
 
@@ -238,8 +243,10 @@ class TransformerDecoderLayer(nn.Module):
         self.feed_forward = PositionwiseFeedForward(size, ff_size=ff_size,
                                                     dropout=dropout)
 
-        self.x_layer_norm = nn.LayerNorm(size, eps=1e-6)
-        self.dec_layer_norm = nn.LayerNorm(size, eps=1e-6)
+        # self.x_layer_norm = nn.LayerNorm(size, eps=1e-6)
+        self.h1_layer_norm = nn.LayerNorm(size, eps=1e-6)    # MT Ex. 4 post-norm target-target multi-head attention sublayer
+        # self.dec_layer_norm = nn.LayerNorm(size, eps=1e-6)
+        self.h2_layer_norm = nn.LayerNorm(size, eps=1e-6)    # MT Ex. 4 post-norm source-target multi-head attention sublayer
 
         self.dropout = nn.Dropout(dropout)
 
@@ -259,15 +266,18 @@ class TransformerDecoderLayer(nn.Module):
         :return: output tensor
         """
         # decoder/target self-attention
-        x_norm = self.x_layer_norm(x)
-        h1 = self.trg_trg_att(x_norm, x_norm, x_norm, mask=trg_mask)
-        h1 = self.dropout(h1) + x
+        # x_norm = self.x_layer_norm(x)                 # MT Ex. 4 post-norm: pre-norm step removed here
+        # h1 = self.trg_trg_att(x_norm, x_norm, x_norm, mask=trg_mask)
+        h1 = self.trg_trg_att(x, x, x, mask=trg_mask)   # MT Ex. 4 post-norm: move normalization step from pre- to post-norm: multi-head attention sublayer (target-target)
+        h1 = self.dropout(h1) + x     # dropout + residual connection
+        h1_norm = self.h1_layer_norm(h1)                # MT Ex. 4 post-norm: move normalization step from pre- to post-norm
 
         # source-target attention
-        h1_norm = self.dec_layer_norm(h1)
+        # h1_norm = self.dec_layer_norm(h1)             # MT Ex. 4 post-norm: pre-norm step removed here
         h2 = self.src_trg_att(memory, memory, h1_norm, mask=src_mask)
+        h2_norm = self.h2_layer_norm(self.dropout(h2) + h1)     # MT Ex. 4 post-norm: move normalization step from pre- to post-norm: multi-head attention sublayer (source-target)
 
         # final position-wise feed-forward layer
-        o = self.feed_forward(self.dropout(h2) + h1)
+        o = self.feed_forward(h2_norm)
 
         return o

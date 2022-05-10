@@ -493,7 +493,7 @@ class TransformerDecoder(Decoder):
                 dropout=dropout) for _ in range(num_layers)])
 
         self.pe = PositionalEncoding(hidden_size)
-        self.layer_norm = nn.LayerNorm(hidden_size, eps=1e-6)
+        # self.layer_norm = nn.LayerNorm(hidden_size, eps=1e-6)    # MT Ex. 4 pos-norm: removed layer normalization because it is part of Feed Forward sublayer (post-norm)
 
         self.emb_dropout = nn.Dropout(p=emb_dropout)
         self.output_layer = nn.Linear(hidden_size, vocab_size, bias=False)
@@ -536,7 +536,7 @@ class TransformerDecoder(Decoder):
             x = layer(x=x, memory=encoder_output,
                       src_mask=src_mask, trg_mask=trg_mask)
 
-        x = self.layer_norm(x)
+        # x = self.layer_norm(x)    # MT Ex. 4 pos-norm: removed layer normalization because it is part of Feed Forward sublayer (post-norm)
         output = self.output_layer(x)
 
         return output, x, None, None
